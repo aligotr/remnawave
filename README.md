@@ -115,3 +115,7 @@ flowchart TB
     HAProxy3 -->|validation| AcmeSh3
   end
 ```
+
+---
+
+_"remnawave_sni_map" и "remnawave_inbounds_cache" взяты из проекта [vff-remnawave-auto](https://github.com/ryabkov82/vff-remnawave-auto)._
