@@ -36,16 +36,16 @@ ansible-playbook playbook_remnawave_nodes.yml
 ansible-playbook playbook_remnawave_nodes.yml --limit node
 ```
 
-## acme.sh
-
-```sh
-ansible-playbook playbooks/remnawave_sni_map.yml playbooks/acme.yml
-```
-
 ## Remnawave Api - Поиск доменов по имени узла
 
 ```sh
 ansible-playbook playbooks/remnawave_sni_map.yml --limit node-msk-01
+```
+
+## acme.sh
+
+```sh
+ansible-playbook playbooks/remnawave_sni_map.yml playbooks/acme.yml
 ```
 
 ## Iptables
