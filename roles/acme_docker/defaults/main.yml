@@ -1,0 +1,21 @@
+---
+workdir: /srv
+acme_path: "{{ workdir }}/acme"
+acme_certs_host_path: "{{ workdir }}/certs"
+acme_certs_container_path: "/certs"
+
+acme_domains: []
+acme_domains_ext: []
+
+acme_staging: false
+acme_ca: "{{ 'letsencrypt_test' if acme_staging else 'letsencrypt' }}"
+acme_tls_mode: "letsencrypt_http01_haproxy" # letsencrypt_http01, letsencrypt_dns01
+acme_http_port: "8080"
+
+acme_ports:
+  - "127.0.0.1:{{ acme_http_port }}:{{ acme_http_port }}"
+
+acme_volumes:
+  - /var/run/docker.sock:/var/run/docker.sock:ro
+  - "{{ acme_path }}/data/:/acme.sh/:rw"
+  - "{{ acme_certs_host_path }}:{{ acme_certs_container_path }}/:rw"

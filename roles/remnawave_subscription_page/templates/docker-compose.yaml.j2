@@ -1,0 +1,12 @@
+services:
+  remnawave-subscription-page:
+    # Безопасность
+    ulimits: { nofile: { soft: 1048576, hard: 1048576 } }
+    # Настройки контейнера
+    container_name: remnawave-subscription-page
+    image: remnawave/subscription-page:latest
+    restart: always
+    ports:
+      - 127.0.0.1:3010:3010
+    env_file:
+      - .env

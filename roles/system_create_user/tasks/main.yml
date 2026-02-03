@@ -1,0 +1,56 @@
+---
+- name: Check if SSH public key file exists locally
+  delegate_to: localhost
+  become: false
+  ansible.builtin.stat:
+    path: "{{ system_user_auth_key_path }}"
+  register: ssh_key_file
+  failed_when: not ssh_key_file.stat.exists
+
+- name: Manage user group
+  ansible.builtin.group:
+    name: "{{ system_user_name }}"
+    gid: "{{ system_user_uid | int }}"
+    state: present
+
+- name: Create system user
+  ansible.builtin.user:
+    name: "{{ system_user_name }}"
+    uid: "{{ system_user_uid | int }}"
+    group: "{{ system_user_name }}"
+    shell: /bin/bash
+    groups: "{{ system_user_groups | default([]) }}"
+    append: true
+    state: present
+    force: false
+
+- name: Add SSH public key
+  ansible.posix.authorized_key:
+    user: "{{ system_user_name }}"
+    state: present
+    key: "{{ lookup('file', system_user_auth_key_path) }}"
+  when: ssh_key_file.stat.exists
+
+- name: Create sudoers.d configuration file for user group
+  ansible.builtin.lineinfile:
+    path: /etc/sudoers.d/{{ system_user_name }}
+    create: true
+    line: "%{{ system_user_name }} ALL=(ALL) NOPASSWD:ALL"
+    mode: "0440"
+    validate: "/usr/sbin/visudo -cf %s"
+
+- name: Security - Check if root is already locked
+  ansible.builtin.command: getent shadow root
+  register: root_shadow_entry
+  changed_when: false
+  failed_when: false
+  when: system_lock_root
+
+- name: Security - Lock root user password
+  ansible.builtin.user:
+    name: root
+    password_lock: true
+  when:
+    - system_lock_root
+    - root_shadow_entry.rc == 0
+    - not (root_shadow_entry.stdout.split(':')[1]).startswith('!')

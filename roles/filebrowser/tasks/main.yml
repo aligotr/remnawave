@@ -1,0 +1,18 @@
+---
+- name: Create dir
+  ansible.builtin.file:
+    path: "{{ filebrowser_path }}"
+    mode: "0755"
+    state: directory
+
+- name: Create docker compose
+  ansible.builtin.template:
+    src: docker-compose.yaml.j2
+    dest: "{{ filebrowser_path }}/docker-compose.yaml"
+    mode: "0644"
+
+- name: Start compose file
+  community.docker.docker_compose_v2:
+    project_src: "{{ filebrowser_path }}"
+    remove_orphans: true
+    state: present

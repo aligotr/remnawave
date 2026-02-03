@@ -1,0 +1,7 @@
+---
+workdir: /opt
+remnawave_node_path: "{{ workdir }}/remnawave_node"
+remnawave_node_certs_host_path: "{{ workdir }}/certs/main"
+remnawave_node_port: 2222
+remnawave_node_volumes:
+  - "{{ remnawave_node_certs_host_path }}/:/var/lib/remnawave/configs/xray/ssl/:ro"

@@ -1,0 +1,8 @@
+remnawave_sysctl_bbr_enabled: true
+remnawave_panel_ip: "{{ vault_remnawave_panel_ip }}"
+remnawave_node_port: "{{ vault_remnawave_node_port }}"
+remnawave_node_ssl_cert: "{{ vault_remnawave_node_ssl_cert }}"
+system_iptables_rules_input:
+  - { proto: "tcp", dport: "80" }
+  - { proto: "tcp", dport: "443" }
+  - { proto: "tcp", dport: "{{ remnawave_node_port }}", src: "{{ remnawave_panel_ip }}", comment: "Remnawave Api" }

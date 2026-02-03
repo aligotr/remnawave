@@ -1,0 +1,15 @@
+---
+workdir: /srv
+haproxy_path: "{{ workdir }}/haproxy"
+haproxy_certs_host_path: "{{ workdir }}/certs/haproxy"
+haproxy_certs_container_path: "/etc/ssl/haproxy"
+haproxy_cfg_src: haproxy.cfg
+
+haproxy_version: latest
+haproxy_root_mode: true
+haproxy_host_mode: true
+haproxy_networks: {}
+haproxy_ports: []
+haproxy_volumes:
+  - "{{ haproxy_path }}/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro"
+  - "{{ haproxy_certs_host_path }}:{{ haproxy_certs_container_path }}/:ro"

@@ -1,0 +1,6 @@
+---
+- name: Remnawave Subscription Page
+  hosts: subscription
+  become: true
+  roles:
+    - role: remnawave_subscription_page

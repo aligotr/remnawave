@@ -1,0 +1,40 @@
+---
+- name: Combine rules into a single list
+  ansible.builtin.set_fact:
+    # Сортировка гарантирует, что 0-й элемент всегда будет одним и тем же
+    _acme_domains: "{{ (acme_domains + acme_domains_ext) | unique | sort | list }}"
+
+- name: Assert required variables
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', item, default='') | length > 0
+    fail_msg: "Переменная <{{ item }}> не заполнена или отсутствует!"
+  loop:
+    - _acme_domains
+
+- name: Create dir
+  ansible.builtin.file:
+    path: "{{ acme_path }}"
+    mode: "0755"
+    state: directory
+
+- name: Create docker compose
+  ansible.builtin.template:
+    src: docker-compose.yaml.j2
+    dest: "{{ acme_path }}/docker-compose.yaml"
+    mode: "0644"
+
+- name: Start compose file
+  community.docker.docker_compose_v2:
+    project_src: "{{ acme_path }}"
+    remove_orphans: true
+    state: present
+
+# Подготовка списков (флагов) доменов
+- name: Prepare domains flag
+  ansible.builtin.include_tasks: prepare.yml
+
+# Ветки выпуска сертификата
+- name: TLS | Issue certificate via HTTP-01 (webroot)
+  when: acme_tls_mode == 'letsencrypt_http01_haproxy'
+  ansible.builtin.include_tasks: tls_http01_haproxy.yml

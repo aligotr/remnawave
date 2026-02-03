@@ -1,0 +1,25 @@
+---
+- name: Remnawave Node
+  become: true
+  hosts: node
+  roles:
+    - remnawave_node
+
+- name: Remnawave Subscription Page
+  import_playbook: playbooks/remnawave_subscription_page.yml
+
+- name: Fallback - Filebrowser
+  import_playbook: playbooks/filebrowser.yml
+  when: remnawave_group_panel not in group_names
+
+- name: Prepare sni-map and domains list
+  import_playbook: playbooks/remnawave_sni_map.yml
+  when: remnawave_group_panel not in group_names
+
+- name: HAProxy
+  import_playbook: playbooks/haproxy.yml
+  when: remnawave_group_panel not in group_names
+
+- name: Acme.sh
+  import_playbook: playbooks/acme.yml
+  when: remnawave_group_panel not in group_names

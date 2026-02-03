@@ -1,0 +1,31 @@
+---
+- name: Wait for HAProxy to be ready
+  community.docker.docker_container_info:
+    name: haproxy
+  register: result
+  until: result.exists and result.container.State.Status == "running"
+  retries: 5
+  delay: 2
+  listen: "Reload HAProxy"
+
+- name: Validate HAProxy configuration
+  community.docker.docker_container_exec:
+    container: haproxy
+    command: "haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg"
+  register: config_check
+  failed_when: false
+  listen: "Reload HAProxy"
+
+- name: Fail if config is invalid
+  ansible.builtin.fail:
+    msg: "HAProxy config check failed: {{ config_check.stderr | default(config_check.stdout) }}"
+  when: config_check.rc != 0
+  listen: "Reload HAProxy"
+
+- name: Restart HAProxy container
+  community.docker.docker_container:
+    name: haproxy
+    state: started
+    restart: yes
+  when: config_check.rc == 0
+  listen: "Reload HAProxy"

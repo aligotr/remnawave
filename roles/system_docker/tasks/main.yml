@@ -1,0 +1,77 @@
+---
+- name: Manage Kernel Optimizations
+  ansible.builtin.import_tasks: kernel_optimizations.yml
+
+- name: Install dependencies
+  ansible.builtin.apt:
+    name:
+      - apt-transport-https
+      - lsb-release
+      - gnupg
+      - ca-certificates
+      - curl
+    state: present
+    update_cache: true
+
+- name: Create GPG directory
+  ansible.builtin.file:
+    path: /etc/apt/keyrings
+    state: directory
+    mode: "0755"
+
+- name: Add Docker GPG key
+  ansible.builtin.get_url:
+    url: "https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}/gpg"
+    dest: /etc/apt/keyrings/docker.asc
+    mode: "0644"
+
+- name: Map architecture for Docker APT repo
+  vars:
+    arch_map:
+      x86_64: amd64
+      aarch64: arm64
+      armv7l: armhf
+  ansible.builtin.set_fact:
+    # Если архитектура не найдена в мапе, оставляем старое значение или amd64
+    docker_engine_apt_arch: "{{ arch_map[ansible_facts['architecture']] | default('amd64') }}"
+
+- name: Add Docker repository to apt
+  ansible.builtin.apt_repository:
+    repo: >-
+      deb [arch={{ docker_engine_apt_arch }} signed-by=/etc/apt/keyrings/docker.asc]
+      https://download.docker.com/linux/{{ ansible_facts['distribution'] | lower }}
+      {{ ansible_facts['distribution_release'] }}
+      stable
+    filename: docker
+    state: present
+    update_cache: true
+
+- name: Install Docker components
+  ansible.builtin.apt:
+    name:
+      - docker-ce
+      - docker-ce-cli
+      - containerd.io
+      - docker-buildx-plugin
+      - docker-compose-plugin
+    state: present
+    update_cache: true
+
+- name: Ensure Docker service is running and enabled
+  ansible.builtin.service:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Ensure group "docker" exists
+  ansible.builtin.group:
+    name: docker
+    state: present
+  when: system_docker_user | length > 0
+
+- name: Add user to docker group
+  ansible.builtin.user:
+    name: "{{ system_docker_user }}"
+    groups: docker
+    append: true
+  when: system_docker_user | length > 0

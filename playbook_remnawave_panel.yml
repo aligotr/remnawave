@@ -1,0 +1,18 @@
+---
+- name: Remnawave Panel
+  hosts: panel
+  become: true
+  roles:
+    - remnawave_panel
+
+- name: Fallback - Filebrowser
+  import_playbook: playbooks/filebrowser.yml
+
+- name: Prepare sni-map and domains list
+  import_playbook: playbooks/remnawave_sni_map.yml
+
+- name: HAProxy
+  import_playbook: playbooks/haproxy.yml
+
+- name: Acme.sh
+  import_playbook: playbooks/acme.yml

@@ -1,0 +1,5 @@
+---
+workdir: /srv
+filebrowser_path: "{{ workdir }}/filebrowser"
+filebrowser_ports:
+  - 127.0.0.1:3020:80

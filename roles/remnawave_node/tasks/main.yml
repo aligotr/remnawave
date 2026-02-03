@@ -1,0 +1,26 @@
+---
+- name: Assert required variables
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', item, default='') | length > 0
+    fail_msg: "<{{ item }}>: переменная не заполнена или отсутствует!"
+  loop:
+    - remnawave_node_ssl_cert
+
+- name: Create dir
+  ansible.builtin.file:
+    path: "{{ remnawave_node_path }}"
+    mode: "0755"
+    state: directory
+
+- name: Create docker compose
+  ansible.builtin.template:
+    src: docker-compose.yaml.j2
+    dest: "{{ remnawave_node_path }}/docker-compose.yaml"
+    mode: "0644"
+
+- name: Start compose file
+  community.docker.docker_compose_v2:
+    project_src: "{{ remnawave_node_path }}"
+    remove_orphans: true
+    state: present

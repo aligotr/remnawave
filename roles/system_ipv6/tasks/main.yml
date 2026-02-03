@@ -1,0 +1,20 @@
+---
+- name: Disable IPv6
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    sysctl_file: /etc/sysctl.d/90-ipv6.conf
+    reload: yes
+  loop:
+    - { key: "net.ipv6.conf.all.disable_ipv6", value: "1" }
+    - { key: "net.ipv6.conf.default.disable_ipv6", value: "1" }
+    - { key: "net.ipv6.conf.lo.disable_ipv6", value: "1" }
+  when: not system_ipv6_enabled
+
+- name: Remove IPv6 config file if enabled
+  ansible.builtin.file:
+    path: /etc/sysctl.d/90-ipv6.conf
+    state: absent
+  when: system_ipv6_enabled
+  notify: Reload sysctl settings

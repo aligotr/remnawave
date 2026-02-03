@@ -1,0 +1,14 @@
+services:
+  filebrowser:
+    # Безопасность
+    ulimits: { nofile: { soft: 1048576, hard: 1048576 } }
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid"]
+    # Настройки контейнера
+    container_name: filebrowser
+    image: filebrowser/filebrowser:latest
+    restart: always
+{% if filebrowser_ports %}
+    ports:
+{{ filebrowser_ports | to_nice_yaml | indent(6, True) }}
+{% endif %}

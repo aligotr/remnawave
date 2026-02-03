@@ -1,0 +1,6 @@
+---
+- name: Acme.sh - Node
+  hosts: panel:node
+  become: true
+  roles:
+    - acme_docker

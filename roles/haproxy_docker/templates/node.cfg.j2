@@ -1,0 +1,146 @@
+global
+    # stdout - Для отображения логово в docker
+    log stdout format raw local0
+    chroot /var/lib/haproxy
+    stats socket /var/lib/haproxy/admin.sock mode 660 level admin
+    stats timeout 30s
+    user haproxy
+    group haproxy
+
+defaults
+    mode tcp
+
+{% if debug_mode | default(false) %}
+    log  global
+    option tcplog
+    option dontlognull
+{% else %}
+    no log
+{% endif %}
+
+    # Поддержание TCP-сессий
+    option srvtcpka
+    option clitcpka
+
+    timeout connect 5s
+    # Тайм-ауты для долгоживущих соединений (XRAY/Websockets)
+    timeout client  30m
+    timeout server  30m
+    timeout client-fin 30s
+    timeout server-fin 30s
+    timeout tunnel 30m
+
+# =============================================================================
+# ACME Challenge
+# =============================================================================
+frontend http_80
+    bind :80
+    mode http
+    acl IS_ACME path_beg /.well-known/acme-challenge/
+
+    # Перенаправление всех остальных на HTTPS
+    redirect scheme https code 301 if !IS_ACME
+
+    # Направление запросов для обновления сертификатов (ACME Challenge)
+    use_backend be_acme_sh if IS_ACME
+
+# =============================================================================
+# HTTPS (TCP Mode / Passthrough)
+# =============================================================================
+frontend tcp_443
+    bind :443
+    mode tcp
+
+    # Ожидание данных для анализа SNI перед тем как принимать решение
+    tcp-request inspect-delay 5s
+    # Извлечение SNI из SSL Hello (не расшифровывая трафик)
+    tcp-request content accept if { req_ssl_hello_type 1 }
+
+{# XRAY Passthrough #}
+{% for sni, port in _sni_port_map.items() %}
+    acl SNI_XRAY_{{ loop.index }} req.ssl_sni -i {{ sni }}
+    use_backend be_xray_{{ port }} if SNI_XRAY_{{ loop.index }}
+{% endfor %}
+
+{# Переход к L7 (SSL Terminator) #}
+{% set _subpage_domain = remnawave_subscription_page_domain | default("") %}
+{% if _subpage_domain %}
+    # Если SNI совпадает с доменом, отправляем на внутренний reverse-proxy
+    acl IS_WEB_TRAFFIC req.ssl_sni -i {{ _subpage_domain }}
+    use_backend be_reverse_proxy if IS_WEB_TRAFFIC
+{% endif %}
+
+# =============================================================================
+# Reverse Proxy (L7 Logic)
+# =============================================================================
+frontend reverse_proxy
+    # Принимаем Proxy Protocol и терминируем SSL
+    # accept-proxy - Обязателен, так как приходит send-proxy-v2
+    # bind unix@/var/lib/haproxy/http.sock ssl crt /etc/ssl/haproxy/ accept-proxy
+    bind 127.0.0.1:5000 ssl crt {{ haproxy_certs_container_path }}/ accept-proxy
+    mode http
+{% if debug_mode | default(false) %}
+    option httplog
+{% endif %}
+    # Уменьшение время ожидания для веб-интерфейса (чтобы не копить битые сессии)
+    timeout client 5m
+
+    # Заголовки
+    http-request del-header X-Real-IP
+    http-request del-header X-Forwarded-For
+    http-request del-header X-Forwarded-Proto
+    http-request del-header X-Forwarded-Host
+    http-request del-header X-Forwarded-Port
+
+    option forwardfor
+    http-request set-header X-Real-IP           %[src]
+    http-request set-header X-Forwarded-For     %[src]
+    http-request set-header X-Forwarded-Proto   https
+    http-request set-header X-Forwarded-Host    %[hdr(host)]
+    http-request set-header X-Forwarded-Port    %[dst_port]
+
+    # Поддержка Websocket
+    acl hdr_connection_upgrade  hdr(Connection) -i upgrade
+    acl hdr_upgrade_websocket   hdr(Upgrade)    -i websocket
+
+    http-request set-header Connection  "upgrade"   if hdr_connection_upgrade hdr_upgrade_websocket
+    http-request set-header Upgrade     "websocket" if hdr_upgrade_websocket
+
+{# Маршрутизация приложений на основе Host header #}
+{% if _subpage_domain %}
+    acl IS_SUBPAGE hdr(host) -i {{ _subpage_domain }}
+    use_backend be_remnawave_subpage if IS_SUBPAGE
+{% endif %}
+
+    # Заглушка
+    default_backend be_fallback
+
+# =============================================================================
+# BACKENDS
+# =============================================================================
+backend be_reverse_proxy
+    mode tcp
+    server reverse_proxy 127.0.0.1:5000 send-proxy-v2
+
+backend be_acme_sh
+    mode http
+    server acme_sh 127.0.0.1:8080
+
+backend be_fallback
+    mode http
+    server fallback 127.0.0.1:3020
+
+{% if _subpage_domain %}
+backend be_remnawave_subpage
+    mode http
+    server remnawave_subpage 127.0.0.1:3010
+{% endif %}
+
+{# XRAY #}
+{% for port in _sni_port_map.values() | unique %}
+backend be_xray_{{ port }}
+    mode tcp
+    option srvtcpka
+    server xray 127.0.0.1:{{ port }} send-proxy-v2
+
+{% endfor %}

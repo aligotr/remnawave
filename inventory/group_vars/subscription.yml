@@ -1,0 +1,1 @@
+remnawave_subscription_page_domain: "{{ vault_remnawave_subscription_page_domain }}"

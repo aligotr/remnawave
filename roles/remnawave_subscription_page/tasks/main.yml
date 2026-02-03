@@ -1,0 +1,33 @@
+---
+- name: Assert required variables
+  ansible.builtin.assert:
+    that:
+      - lookup('vars', item, default='') | length > 0
+    fail_msg: "<{{ item }}>: переменная не заполнена или отсутствует!"
+  loop:
+    - remnawave_panel_url
+    - remnawave_panel_api_token
+
+- name: Create dir
+  ansible.builtin.file:
+    path: "{{ remnawave_subscription_page_path }}"
+    mode: "0755"
+    state: directory
+
+- name: Create docker compose
+  ansible.builtin.template:
+    src: docker-compose.yaml.j2
+    dest: "{{ remnawave_subscription_page_path }}/docker-compose.yaml"
+    mode: "0644"
+
+- name: Create .env file
+  ansible.builtin.template:
+    src: env.j2
+    mode: "0644"
+    dest: "{{ remnawave_subscription_page_path }}/.env"
+
+- name: Start compose file
+  community.docker.docker_compose_v2:
+    project_src: "{{ remnawave_subscription_page_path }}"
+    remove_orphans: true
+    state: present

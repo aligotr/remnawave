@@ -1,0 +1,41 @@
+{% if haproxy_networks and not haproxy_host_mode %}
+networks:
+{{ haproxy_networks | to_nice_yaml | indent(2, True)}}
+{% endif %}
+{##}
+
+services:
+  haproxy:
+    # Безопасность
+{##}
+{% if haproxy_root_mode %}
+    user: root
+{% endif %}
+{##}
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid"]
+    # Настройки контейнера
+    container_name: haproxy
+    image: haproxy:{{ haproxy_version }}
+    restart: always
+{##}
+{% if haproxy_host_mode %}
+    network_mode: host
+{% endif %}
+{##}
+{% if haproxy_networks %}
+    networks:
+{{ haproxy_networks.keys() | list | to_nice_yaml | indent(6, True) }}
+{% endif %}
+{##}
+{% if haproxy_ports %}
+    ports:
+{{ haproxy_ports | to_nice_yaml | indent(6, True) }}
+{% endif %}
+{##}
+{##}
+{% if haproxy_volumes %}
+    volumes:
+{{ haproxy_volumes | to_nice_yaml | indent(6, True) }}
+{% endif %}
+{##}

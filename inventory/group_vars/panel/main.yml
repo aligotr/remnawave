@@ -1,0 +1,34 @@
+# --- Remnawave Panel ---
+remnawave_panel_domain: "{{ vault_remnawave_panel_domain }}"
+remnawave_panel_port: "{{ vault_remnawave_panel_port }}"
+
+# Database
+remnawave_panel_postgres_user: "{{ vault_remnawave_panel_postgres_user }}"
+remnawave_panel_postgres_password: "{{ vault_remnawave_panel_postgres_password }}"
+remnawave_panel_postgres_db: "{{ vault_remnawave_panel_postgres_db }}"
+
+# Jwt
+remnawave_panel_jwt_auth_secret: "{{ vault_remnawave_panel_jwt_auth_secret }}"
+remnawave_panel_jwt_api_tokens_secret: "{{ vault_remnawave_panel_jwt_api_tokens_secret }}"
+
+# Frontend
+remnawave_panel_front_end_domain: "{{ remnawave_panel_domain }}"
+
+# Subscription public domain
+remnawave_panel_sub_public_domain: "{{ vault_remnawave_subscription_page_domain }}"
+
+# Prometheus
+remnawave_panel_metrics_user: "{{ vault_remnawave_panel_metrics_user }}"
+remnawave_panel_metrics_pass: "{{ vault_remnawave_panel_metrics_pass }}"
+
+# Webhook configuration
+remnawave_panel_webhook_secret_header: "{{ vault_remnawave_panel_webhook_secret_header }}"
+
+# --- acme.sh ---
+acme_domains: "{{ vault_acme_domains }}"
+
+# --- System ---
+system_docker_redis_optimization_enabled: true
+system_iptables_rules_input:
+  - { proto: "tcp", dport: "{{ remnawave_panel_port }}", src: "{{ vault_remnawave_subscription_page_ip }}", comment: "Remnawave Api" }
+  - { proto: "tcp", dport: "{{ vault_remnawave_node_port }}", iface: "!WAN", comment: "Remnawave Api" }

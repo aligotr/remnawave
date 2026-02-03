@@ -1,0 +1,26 @@
+---
+- name: Build SNI→PORT map using remnawave_sni_map
+  hosts: panel:node
+  become: true
+  roles:
+    - remnawave_sni_map
+  vars:
+    remnawave_sni_node_name: "{{ remnawave_node_name | default(inventory_hostname) }}"
+    remnawave_sni_api_base_url: "{{ remnawave_panel_url }}/api"
+    remnawave_sni_api_token: "{{ remnawave_panel_api_token }}"
+
+- name: Prepare domains list
+  hosts: all
+  tasks:
+    - name: Create domains list
+      ansible.builtin.set_fact:
+        acme_domains_ext: "{{ (base_list + panel_list + sub_list) | unique }}"
+      vars:
+        base_list: "{{ _sni_port_map.keys() | list if _sni_port_map is defined else [] }}"
+        panel_list: "{{ [remnawave_panel_domain] if remnawave_panel_domain is defined else [] }}"
+        sub_list: "{{ [remnawave_subscription_page_domain] if remnawave_subscription_page_domain is defined else [] }}"
+
+    - name: Debug SNI map
+      ansible.builtin.debug:
+        msg: "DOMAINS LIST: {{ acme_domains_ext }}"
+      when: debug_mode | default(false)

@@ -1,0 +1,10 @@
+---
+system_iptables_script_path: /usr/local/bin/iptables.sh
+system_iptables_icmp_enable: true
+system_iptables_ssh_port: 22
+system_iptables_admin_ips: []
+system_iptables_admin_ips_ext: []
+system_iptables_rules_input: []
+system_iptables_rules_input_ext: []
+system_iptables_rules_docker: []
+system_iptables_rules_docker_ext: []

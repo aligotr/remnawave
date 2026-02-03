@@ -1,0 +1,179 @@
+#!/usr/bin/env sh
+set -eu
+
+# Сетевой интерфейс
+WAN="{{ ansible_facts['default_ipv4']['interface'] }}"
+
+# ==============================================================================
+# --- IPv6 Configuration ---
+# ==============================================================================
+
+# Полная очистка всех таблиц
+ip6tables -F
+ip6tables -X
+ip6tables -t nat -F || true
+ip6tables -t nat -X || true
+ip6tables -t mangle -F || true
+ip6tables -t mangle -X || true
+
+# Всё запрещено, кроме исходящих соединений
+ip6tables -P INPUT DROP
+ip6tables -P FORWARD DROP
+ip6tables -P OUTPUT ACCEPT
+
+# Разрешить Loopback
+ip6tables -A INPUT -i lo -j ACCEPT
+
+# Разрешить уже установленные соединения
+ip6tables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Отбросить все недействительные соединения
+ip6tables -A INPUT -m conntrack --ctstate INVALID -j DROP
+
+# Разрешить ICMPv6 (критически важно для работы поиска соседей и MTU в IPv6)
+ip6tables -A INPUT -p ipv6-icmp -j ACCEPT
+
+# Проверка и создание цепочки DOCKER-USER
+ip6tables -L DOCKER-USER >/dev/null 2>&1 || ip6tables -N DOCKER-USER
+
+# Очистка, если цепочка по каким-либо причинам существовала
+ip6tables -F DOCKER-USER
+
+# Защита Docker
+ip6tables -A DOCKER-USER -j DROP
+
+# ==============================================================================
+# --- IPv4 Configuration ---
+# ==============================================================================
+
+# Полная очистка
+iptables -F
+iptables -X
+iptables -t nat -F || true
+iptables -t nat -X || true
+iptables -t mangle -F || true
+iptables -t mangle -X || true
+
+# Всё запрещено, кроме исходящих соединений и разрешающих правил
+iptables -P INPUT DROP
+iptables -P FORWARD DROP
+iptables -P OUTPUT ACCEPT
+
+# Разрешить все установленные и связанные соединения для внешнего интерфейса
+iptables -A INPUT -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+iptables -A FORWARD -m conntrack --ctstate ESTABLISHED,RELATED -j ACCEPT
+
+# Отбросить все не действительные соединения
+iptables -A INPUT -m conntrack --ctstate INVALID -j DROP
+iptables -A FORWARD -m conntrack --ctstate INVALID -j DROP
+
+# Разрешить локальные петли
+iptables -A INPUT -i lo -j ACCEPT
+
+# Защита от спуфинга локальных адресов извне
+iptables -A INPUT -s 127.0.0.0/8 ! -i lo -j DROP
+iptables -A FORWARD -s 127.0.0.0/8 -j DROP
+
+# Разрешить ICMP (ping) с ограничением (защита от Flood)
+{% if system_iptables_icmp_enable %}
+iptables -A INPUT -p icmp --icmp-type echo-request -m limit --limit 5/s -j ACCEPT
+{% endif %}
+
+# --- Admin-доступ (INPUT) ---
+{% if _admin_ips | length > 0 %}
+{% for ip in _admin_ips %}
+iptables -A INPUT -i $WAN -s {{ ip }} -m conntrack --ctstate NEW -j ACCEPT
+{% endfor %}
+{% else %}
+# Если список админов пуст, открываем SSH (порт {{ system_iptables_ssh_port | default(22) }}) всему миру
+iptables -A INPUT -i $WAN -p tcp --dport {{ system_iptables_ssh_port | default(22) }} -m conntrack --ctstate NEW -j ACCEPT
+{% endif %}
+
+# --- VARS: Создание Input Rules ---
+{% for rule in _input_rules %}
+{% if rule.src is defined or rule.dport is defined %}
+{% set i = "-i " + rule.iface if rule.iface is defined else "-i $WAN" %}
+{% set s = "-s " + rule.src if rule.src is defined else "" %}
+{% set p = "-p " + rule.proto if rule.proto is defined else "" %}
+{% set d = "--dport " + (rule.dport | string) if rule.dport is defined else "" %}
+{% set c = rule.comment | default('Managed by Ansible') %}
+{# --- Логика распознавания интерфейсов --- #}
+{% set raw_iface = rule.iface | default('WAN') %}
+{% if raw_iface == 'WAN' %}
+{% set i_cmd = "-i $WAN" %}
+{% elif raw_iface == '!WAN' %}
+{% set i_cmd = "! -i $WAN" %}
+{% elif raw_iface.startswith('!') %}
+{% set i_cmd = "! -i " + raw_iface[1:] %}
+{% else %}
+{% set i_cmd = "-i " + raw_iface %}
+{% endif %}
+{# ---------------------------------------------- #}
+iptables -A INPUT {{ i_cmd }} {{ s }} {{ p }} {{ d }} -m comment --comment "{{ c }}" -m conntrack --ctstate NEW -j ACCEPT
+{% endif %}
+{% endfor %}
+
+# Логирование заблокированных входящих
+# iptables -A INPUT -i $WAN -m limit --limit 3/min -j LOG --log-prefix "iptables-deny: " --log-level 7
+
+# ==============================================================================
+# --- DOCKER-USER (Security для контейнеров) ---
+# ==============================================================================
+
+# Проверка и создание цепочки DOCKER-USER
+iptables -L DOCKER-USER >/dev/null 2>&1 || iptables -N DOCKER-USER
+
+# Очистка, если цепочка по каким-либо причинам существовала
+iptables -F DOCKER-USER
+
+# Разрешить уже установленные соединения контейнеров
+iptables -A DOCKER-USER -i $WAN -m conntrack --ctstate RELATED,ESTABLISHED -j RETURN
+
+# Отбросить не действительные соединения
+iptables -A DOCKER-USER -i $WAN -m conntrack --ctstate INVALID -j DROP
+
+# Admin - доступ к портам контейнеров
+{% for ip in _admin_ips %}
+iptables -A DOCKER-USER -i $WAN -s {{ ip }} -j RETURN
+{% endfor %}
+
+# --- VARS: Создание DOCKER-USER Rules ---
+{% for rule in _docker_rules %}
+{% if rule.src is defined or rule.dport is defined %}
+{% set i = "-i " + rule.iface if rule.iface is defined else "-i $WAN" %}
+{% set s = "-s " + rule.src if rule.src is defined else "" %}
+{% set p = "-p " + rule.proto if rule.proto is defined else "" %}
+{% set d = "--dport " + (rule.dport | string) if rule.dport is defined else "" %}
+{% set c = rule.comment | default('Managed by Ansible') %}
+{# --- Логика распознавания интерфейсов --- #}
+{% set raw_iface = rule.iface | default('WAN') %}
+{% if raw_iface == 'WAN' %}
+{% set i_cmd = "-i $WAN" %}
+{% elif raw_iface == '!WAN' %}
+{% set i_cmd = "! -i $WAN" %}
+{% elif raw_iface.startswith('!') %}
+{% set i_cmd = "! -i " + raw_iface[1:] %}
+{% else %}
+{% set i_cmd = "-i " + raw_iface %}
+{% endif %}
+{# ---------------------------------------------- #}
+iptables -A DOCKER-USER {{ i_cmd }} {{ s }} {{ p }} {{ d }} -m comment --comment "{{ c }}" -j RETURN
+{% endif %}
+{% endfor %}
+
+# Запретить всё что не разрешено на указанном интерфейсе
+iptables -A DOCKER-USER -i $WAN -j DROP
+
+# Разрешить трафик между контейнерами и внутренними сетями
+iptables -A DOCKER-USER -j RETURN
+
+# ==============================================================================
+# --- Сохранение ---
+# ==============================================================================
+
+if command -v netfilter-persistent >/dev/null 2>&1; then
+    netfilter-persistent save
+fi
+
+# Перезапустить Docker
+# systemctl restart docker

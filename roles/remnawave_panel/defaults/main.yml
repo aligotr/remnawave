@@ -1,0 +1,44 @@
+---
+workdir: /opt
+remnawave_panel_path: "{{ workdir }}/remnawave"
+remnawave_panel_version: 2
+remnawave_panel_postgres_version: 17.6
+remnawave_panel_redis_version: 8.1-alpine
+remnawave_panel_volumes: []
+
+### APP ###
+remnawave_panel_tz: Europe/Moscow
+
+### DATABASE ###
+remnawave_panel_postgres_user: postgres
+remnawave_panel_postgres_password: "postgres"
+remnawave_panel_postgres_db: postgres
+
+### JWT ###
+remnawave_panel_jwt_auth_secret: "change_me"
+remnawave_panel_jwt_api_tokens_secret: "change_me"
+
+### TELEGRAM NOTIFICATIONS ###
+remnawave_panel_is_telegram_notifications_enabled: "false"
+remnawave_panel_telegram_bot_token: ""
+remnawave_panel_telegram_notify_users_chat_id: ""
+remnawave_panel_telegram_notify_nodes_chat_id: ""
+remnawave_panel_telegram_notify_crm_chat_id: ""
+remnawave_panel_telegram_notify_users_thread_id: ""
+remnawave_panel_telegram_notify_nodes_thread_id: ""
+remnawave_panel_telegram_notify_crm_thread_id: ""
+
+### FRONT_END ###
+remnawave_panel_front_end_domain: "*"
+
+### SUBSCRIPTION PUBLIC DOMAIN ###
+remnawave_panel_sub_public_domain: panel.domain.com/api/sub
+
+### PROMETHEUS ###
+remnawave_panel_metrics_user: admin
+remnawave_panel_metrics_pass: "admin"
+
+# Webhook configuration
+remnawave_panel_webhook_enabled: "false"
+remnawave_panel_webhook_url: https://your-webhook-url.com/endpoint
+remnawave_panel_webhook_secret_header: "vsmu67Kmg6R8FjIOF1WUY8LWBHie4scdEqrfsKmyf4IAf8dY3nFS0wwYHkhh6ZvQ"

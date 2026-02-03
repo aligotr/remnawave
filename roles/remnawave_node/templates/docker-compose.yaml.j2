@@ -1,0 +1,16 @@
+services:
+  remnanode:
+    # Безопасность
+    ulimits: { nofile: { soft: 1048576, hard: 1048576 } }
+    # Настройки контейнера
+    container_name: remnanode
+    image: remnawave/node:latest
+    restart: always
+    network_mode: host
+{% if remnawave_node_volumes %}
+    volumes:
+{{ remnawave_node_volumes | to_nice_yaml | indent(6, True) }}
+{% endif %}
+    environment:
+      NODE_PORT: {{ remnawave_node_port }}
+      SECRET_KEY: {{ remnawave_node_ssl_cert }}

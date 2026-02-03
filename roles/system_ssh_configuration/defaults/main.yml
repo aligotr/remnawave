@@ -1,0 +1,5 @@
+---
+system_ssh_port: 22
+system_ssh_permit_root_login: "no"
+system_ssh_password_authentication: "no"
+system_lock_root: true

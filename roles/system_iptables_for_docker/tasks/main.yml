@@ -1,0 +1,22 @@
+---
+- name: Combine rules into a single list
+  ansible.builtin.set_fact:
+    _admin_ips: "{{ (system_iptables_admin_ips + system_iptables_admin_ips_ext) | unique | list }}"
+    _input_rules: "{{ (system_iptables_rules_input + system_iptables_rules_input_ext) | unique | list }}"
+    _docker_rules: "{{ (system_iptables_rules_docker + system_iptables_rules_docker_ext) | unique | list }}"
+
+- name: Install iptables-persistent
+  ansible.builtin.apt:
+    name: iptables-persistent
+    state: present
+    update_cache: true
+  when: ansible_facts['os_family'] == "Debian"
+
+- name: Apply firewall template
+  ansible.builtin.template:
+    src: iptables.sh.j2
+    dest: "{{ system_iptables_script_path }}"
+    mode: "0755"
+  notify:
+    - Run firewall script
+    - Restart docker

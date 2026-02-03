@@ -1,0 +1,19 @@
+---
+- name: Enable TCP BBR and Fair Queuing
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/90-xray.conf
+  loop:
+    - { key: "net.core.default_qdisc", value: "fq" }
+    - { key: "net.ipv4.tcp_congestion_control", value: "bbr" }
+  when: remnawave_sysctl_bbr_enabled
+
+- name: Remove TCP BBR config file if disabled
+  ansible.builtin.file:
+    path: /etc/sysctl.d/90-xray.conf
+    state: absent
+  when: not remnawave_sysctl_bbr_enabled
+  notify: Reload sysctl settings

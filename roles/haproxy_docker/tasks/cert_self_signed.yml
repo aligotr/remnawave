@@ -1,0 +1,51 @@
+---
+- name: Get HAProxy container info
+  community.docker.docker_container_info:
+    name: haproxy
+  register: haproxy_container_info
+
+- name: Set fact about container status
+  ansible.builtin.set_fact:
+    haproxy_is_running: "{{ haproxy_container_info.exists and haproxy_container_info.container.State.Running }}"
+
+- name: Handle temporary certificate
+  block:
+    - name: Create directory for certs
+      ansible.builtin.file:
+        path: "{{ haproxy_certs_host_path }}"
+        state: directory
+        mode: "0755"
+
+    - name: Create temporary cert if container is NOT running
+      when: not haproxy_is_running
+      block:
+        - name: Create private key
+          community.crypto.openssl_privatekey:
+            path: /tmp/tmp.key
+
+        - name: Create CSR
+          community.crypto.openssl_csr:
+            path: /tmp/tmp.csr
+            privatekey_path: /tmp/tmp.key
+            common_name: "*.example.com"
+
+        - name: Create self-signed certificate
+          community.crypto.x509_certificate:
+            path: /tmp/tmp.crt
+            privatekey_path: /tmp/tmp.key
+            csr_path: /tmp/tmp.csr
+            provider: selfsigned
+
+        - name: Combine key and cert for HAProxy
+          ansible.builtin.assemble:
+            src: /tmp/
+            regexp: 'tmp\.(key|crt)'
+            dest: "{{ haproxy_certs_host_path }}/cert_combine.pem"
+            mode: "0600"
+
+    - name: Remove temporary cert if container IS running and stable
+      ansible.builtin.file:
+        path: "{{ haproxy_certs_host_path }}/cert_temp.pem"
+        state: absent
+      when:
+        - haproxy_is_running

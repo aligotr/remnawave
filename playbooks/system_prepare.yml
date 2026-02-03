@@ -1,0 +1,31 @@
+---
+- name: Connection check
+  hosts: all
+  gather_facts: false
+  tasks:
+    - name: Check which ports are open
+      ansible.builtin.wait_for:
+        host: "{{ ansible_host }}"
+        port: "{{ item }}"
+        timeout: 3
+        state: started
+      ignore_errors: true
+      register: port_check
+      delegate_to: localhost
+      loop:
+        - "{{ ansible_port }}"
+        - 22
+
+    - name: Set active port fact
+      ansible.builtin.set_fact:
+        ansible_port: "{{ (port_check.results[0].failed) | ternary(22, port_check.results[0].item) }}"
+
+- name: Prepare system
+  hosts: all
+  become: true
+  roles:
+    - system_create_user
+    - system_ssh_configuration
+    - system_ipv6
+    - system_docker
+    - system_iptables_for_docker

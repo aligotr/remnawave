@@ -1,0 +1,54 @@
+---
+- name: Ensure required directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ acme_certs_host_path }}/main"
+    - "{{ acme_certs_host_path }}/haproxy"
+
+- name: Check if certificate exists
+  ansible.builtin.stat:
+    path: "{{ acme_path }}/data/{{ acme_first_domain }}_ecc/fullchain.cer"
+  register: acme_cert_file
+
+- name: Check if combine certificate exists
+  ansible.builtin.stat:
+    path: "{{ acme_certs_host_path }}/haproxy/{{ acme_base_domain }}.pem"
+  register: acme_cert_combine_file
+
+- name: Issue certificate via HTTP-01 proxying
+  ansible.builtin.command: >
+    docker exec acme-sh acme.sh --issue
+    --server {{ acme_ca }}
+    {{ acme_d_flags }}
+    --standalone
+    --httpport {{ acme_http_port }}
+  register: acme_issue_result
+  when: not acme_cert_file.stat.exists
+  failed_when:
+    - acme_issue_result.rc not in [0, 2]
+    - "'Skipping' not in acme_issue_result.stdout"
+  changed_when: "'Cert success' in acme_issue_result.stdout"
+
+- name: Install and Combine certificate
+  ansible.builtin.command: >
+    docker exec acme-sh acme.sh --install-cert
+    {{ acme_d_flags }}
+    --key-file {{ acme_certs_container_path }}/main/privkey.key
+    --fullchain-file {{ acme_certs_container_path }}/main/fullchain.pem
+    --reloadcmd "cat $CERT_KEY_PATH $CERT_FULLCHAIN_PATH > {{ acme_certs_container_path }}/haproxy/{{ acme_base_domain }}.pem &&
+      curl --unix-socket /var/run/docker.sock -X POST http://localhost/containers/haproxy/kill?signal=HUP"
+  register: acme_deploy_result
+  when: not acme_cert_combine_file.stat.exists or (acme_issue_result is changed)
+  changed_when: "'Success' in acme_deploy_result.stdout"
+
+- name: Debug ACME operations
+  ansible.builtin.debug:
+    msg:
+      - "Issue command run: {{ not acme_cert_file.stat.exists }}"
+      - "Install command run: {{ not acme_cert_combine_file.stat.exists or (acme_issue_result is changed) }}"
+      - "Issue stdout: {{ acme_issue_result.stdout | default('N/A') }}"
+      - "Deploy stdout: {{ acme_deploy_result.stdout | default('N/A') }}"
+  when: debug_mode | default(false)

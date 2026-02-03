@@ -1,0 +1,20 @@
+---
+- name: Get main domain
+  ansible.builtin.set_fact:
+    acme_first_domain: "{{ _acme_domains[0] }}"
+
+- name: Get base domain from the first item
+  ansible.builtin.set_fact:
+    # Берём последний и предпоследний сегменты (example.com)
+    acme_base_domain: "{{ acme_first_domain.split('.')[-2:] | join('.') }}"
+
+- name: Validate that all subdomains belong to the base domain
+  ansible.builtin.assert:
+    that:
+      - item.endswith(acme_base_domain)
+    fail_msg: "Domain {{ item }} does not belong to {{ acme_base_domain }}"
+  loop: "{{ _acme_domains }}"
+
+- name: Prepare domain string for acme.sh
+  ansible.builtin.set_fact:
+    acme_d_flags: "-d {{ _acme_domains | join(' -d ') }}"

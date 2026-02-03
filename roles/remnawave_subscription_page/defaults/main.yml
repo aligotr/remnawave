@@ -1,0 +1,5 @@
+---
+workdir: /opt
+remnawave_subscription_page_path: "{{ workdir }}/remnawave_subscription_page"
+remnawave_panel_url: ""
+remnawave_panel_api_token: ""

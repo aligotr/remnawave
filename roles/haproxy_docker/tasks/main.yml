@@ -1,0 +1,28 @@
+---
+- name: Generate self-signed wildcard cert
+  ansible.builtin.import_tasks: cert_self_signed.yml
+
+- name: Create dir
+  ansible.builtin.file:
+    path: "{{ haproxy_path }}"
+    state: directory
+    mode: "0755"
+
+- name: Create docker compose
+  ansible.builtin.template:
+    src: docker-compose.yaml.j2
+    dest: "{{ haproxy_path }}/docker-compose.yaml"
+    mode: "0644"
+
+- name: Create haproxy.cfg
+  ansible.builtin.template:
+    src: "{{ haproxy_cfg_src }}"
+    dest: "{{ haproxy_path }}/haproxy.cfg"
+    mode: "0644"
+  notify: Reload HAProxy
+
+- name: Start compose file
+  community.docker.docker_compose_v2:
+    project_src: "{{ haproxy_path }}"
+    remove_orphans: true
+    state: present

@@ -1,0 +1,6 @@
+---
+- name: Filebrowser
+  hosts: panel:node
+  become: true
+  roles:
+    - filebrowser

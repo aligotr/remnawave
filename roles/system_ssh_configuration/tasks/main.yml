@@ -1,0 +1,34 @@
+---
+- name: Install mandatory packages
+  ansible.builtin.apt:
+    name: openssh-server
+    state: present
+    update_cache: true
+
+- name: Configure SSH Daemon
+  ansible.builtin.lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    state: present
+    validate: "/usr/sbin/sshd -t -f %s"
+  loop:
+    - { regexp: '^#?Port\s+', line: "Port {{ system_ssh_port }}" }
+    - { regexp: '^#?PermitRootLogin\s+', line: "PermitRootLogin {{ system_ssh_permit_root_login }}" }
+    - {
+        regexp: '^#?PasswordAuthentication\s+',
+        line: "PasswordAuthentication {{ system_ssh_password_authentication }}",
+      }
+  notify: Restart SSH
+
+- name: Security - Lock root user password
+  ansible.builtin.user:
+    name: root
+    password_lock: true
+  when: system_lock_root | bool
+
+- name: Ensure SSH is started
+  ansible.builtin.service:
+    name: ssh
+    state: started
+    enabled: true

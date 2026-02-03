@@ -1,0 +1,37 @@
+# Ansible
+*.retry
+*.pyc
+*.pyo
+__pycache__/
+
+# Virtual Environment
+.venv/
+venv/
+ENV/
+env/
+
+# VS Code
+.vscode/
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Secrets (Ansible Vault is recommended, but we exclude common sensitive files)
+.vault/
+vault.yml
+*.log
+*.key
+*.pem
+*.crt
+.env
+.env.*
+!roles/*/templates/*.j2
+
+# Ansible local data
+.ansible/

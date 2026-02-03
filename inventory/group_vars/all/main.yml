@@ -1,0 +1,19 @@
+---
+workdir: /opt
+debug_mode: false
+system_iptables_admin_ips: "{{ vault_system_iptables_admin_ips }}"
+
+# --- HAProxy ---
+haproxy_cfg_src: "{{ (remnawave_group_panel in group_names) | ternary('panel.cfg.j2', 'node.cfg.j2') }}"
+
+# --- Remnawave ---
+remnawave_group_panel: panel
+remnawave_panel_url: "https://{{ vault_remnawave_panel_domain }}:{{ vault_remnawave_panel_port }}"
+remnawave_panel_api_token: "{{ vault_remnawave_panel_api_token }}"
+
+# --- Ansible ---
+ansible_host: "{{ vault_ansible_host }}"
+ansible_port: "{{ vault_ansible_port }}"
+ansible_user: "{{ vault_ansible_user }}"
+ansible_ssh_private_key_file: ~/ansible/.vault/id_rsa
+ansible_ssh_public_key_file: ~/ansible/.vault/id_rsa.pub

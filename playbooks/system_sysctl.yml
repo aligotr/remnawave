@@ -1,0 +1,13 @@
+---
+- name: Sysctl configuration
+  hosts: all
+  become: true
+  roles:
+    - system_ipv6
+    - system_docker
+
+- name: Sysctl configuration for xray
+  hosts: node
+  become: true
+  roles:
+    - remnawave_sysctl

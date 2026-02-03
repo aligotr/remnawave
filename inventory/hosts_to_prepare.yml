@@ -1,0 +1,37 @@
+---
+all:
+  vars:
+    system_user_name: "{{ vault_ansible_user }}"
+    system_ssh_port: "{{ vault_ansible_port }}"
+    iptables_ssh_port: "{{ vault_ansible_port }}"
+    system_docker_user: "{{ vault_ansible_user }}"
+    system_user_auth_key_path: "{{ ansible_ssh_public_key_file }}"
+
+  hosts:
+    node-msk-01: &node-msk-01
+      ansible_port: 22
+      ansible_user: root
+      ansible_password: "{{ vault_ansible_password_prepare }}"
+
+    node-msk-02: &node-msk-02
+      ansible_port: 22
+      system_user_create: false
+
+    edge-kz-01: &edge-kz-01
+      ansible_port: 22
+      ansible_user: root
+      ansible_password: "{{ vault_ansible_password_prepare }}"
+
+panel:
+  hosts:
+    node-msk-01: *node-msk-01
+
+subscription:
+  hosts:
+    node-msk-02: *node-msk-02
+
+node:
+  hosts:
+    node-msk-01: *node-msk-01
+    node-msk-02: *node-msk-02
+    edge-kz-01: *edge-kz-01

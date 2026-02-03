@@ -1,0 +1,6 @@
+---
+- name: HAProxy
+  hosts: panel:node
+  become: true
+  roles:
+    - haproxy_docker

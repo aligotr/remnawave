@@ -1,0 +1,6 @@
+---
+- name: Iptables
+  hosts: all
+  become: true
+  roles:
+    - system_iptables_for_docker

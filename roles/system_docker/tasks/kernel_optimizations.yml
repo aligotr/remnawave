@@ -1,0 +1,16 @@
+---
+- name: Apply Redis vm.overcommit_memory optimization
+  ansible.posix.sysctl:
+    name: vm.overcommit_memory
+    value: "1"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/90-redis-performance.conf
+  when: system_docker_redis_optimization_enabled
+
+- name: Remove Redis vm.overcommit_memory optimization
+  ansible.builtin.file:
+    path: /etc/sysctl.d/90-redis-performance.conf
+    state: absent
+  when: not (system_docker_redis_optimization_enabled)
+  notify: Reload sysctl settings

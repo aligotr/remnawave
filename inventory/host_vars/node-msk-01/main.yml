@@ -1,0 +1,3 @@
+system_iptables_rules_input_ext:
+  - { proto: "tcp", dport: "2053" }
+  - { proto: "udp", dport: "2083" }

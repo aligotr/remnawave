@@ -1,0 +1,21 @@
+services:
+  acme-sh:
+    # Безопасность
+    security_opt: ["no-new-privileges:true"]
+    tmpfs: ["/tmp:rw,noexec,nosuid"]
+    # Настройки контейнера
+    container_name: acme-sh
+    image: neilpang/acme.sh:latest
+    restart: always
+{##}
+{% if acme_ports %}
+    ports:
+{{ acme_ports | to_nice_yaml | indent(6, True) }}
+{% endif %}
+{##}
+{% if acme_volumes %}
+    volumes:
+{{ acme_volumes | to_nice_yaml | indent(6, True) }}
+{% endif %}
+{##}
+    command: "daemon"
